@@ -1,0 +1,26 @@
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+!.env.exemple
+
+# Git files
+.git
+.gitignore
+
+# Dependencies
+node_modules
+
+# Test and coverage output
+coverage
+.nyc_output
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode

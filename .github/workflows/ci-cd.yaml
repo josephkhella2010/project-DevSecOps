@@ -173,6 +173,7 @@ jobs:
           context: ./frontend/project
           file: ./frontend/project/Dockerfile
           push: false
+          load: true
           tags: ${{ steps.image-names.outputs.frontend }}:${{ github.sha }}
 
       # ==========================================
@@ -184,10 +185,35 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           push: false
+          load: true
           tags: ${{ steps.image-names.outputs.backend }}:${{ github.sha }}
+  
+      # ==========================================
+      # 10. SECURITY: TRIVY IMAGE SCANNING
+      # ==========================================
+      - name: Scan frontend image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.image-names.outputs.frontend }}:${{ github.sha }}
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+
+      - name: Scan backend image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.image-names.outputs.backend }}:${{ github.sha }}
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+
 
       # ==========================================
-      # 10. LOGIN TO GITHUB CONTAINER REGISTRY
+      # 11. LOGIN TO GITHUB CONTAINER REGISTRY
       # ==========================================
       - name: Log in to GitHub Container Registry
         if: github.event_name == 'push'
@@ -198,7 +224,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # ==========================================
-      # 11. PUBLISH FRONTEND IMAGE
+      # 12. PUBLISH FRONTEND IMAGE
       # ==========================================
       - name: Push frontend Docker image
         if: github.event_name == 'push'
@@ -212,7 +238,7 @@ jobs:
             ${{ steps.image-names.outputs.frontend }}:${{ github.sha }}
 
       # ==========================================
-      # 12. PUBLISH BACKEND IMAGE
+      # 13. PUBLISH BACKEND IMAGE
       # ==========================================
       - name: Push backend Docker image
         if: github.event_name == 'push'
@@ -226,7 +252,7 @@ jobs:
             ${{ steps.image-names.outputs.backend }}:${{ github.sha }}
 
       # ==========================================
-      # 13. DOCKER SUCCESS MESSAGE
+      # 14. DOCKER SUCCESS MESSAGE
       # ==========================================
       - name: Docker completed successfully
         run: |
@@ -242,7 +268,7 @@ jobs:
           echo "=================================="
 
       # ==========================================
-      # 14. FINAL FILE LIST AND CI/CD MESSAGE
+      # 15. FINAL FILE LIST AND CI/CD MESSAGE
       # ==========================================
       - name: List files and confirm CI/CD completion
         run: |
