@@ -1,0 +1,247 @@
+
+name: Project DevSecOps CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+permissions:
+  contents: read
+
+jobs:
+  ci-cd:
+    name: Project CI/CD Pipeline
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # ==========================================
+      # 1. CHECKOUT SOURCE CODE
+      # ==========================================
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ==========================================
+      # 2. SET UP NODE.JS
+      # ==========================================
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/project/package-lock.json
+
+      # ==========================================
+      # 3. FRONTEND: INSTALL, AUDIT, LINT, BUILD
+      # ==========================================
+      - name: Install frontend dependencies
+        working-directory: frontend/project
+        run: npm ci
+
+      - name: Audit frontend dependencies
+        working-directory: frontend/project
+        run: npm audit --audit-level=high
+
+      - name: Lint frontend
+        working-directory: frontend/project
+        run: npm run lint
+
+      - name: Build frontend
+        working-directory: frontend/project
+        env:
+          VITE_API_URL: http://localhost:5002/api/
+        run: npm run build
+
+      - name: Frontend completed successfully
+        run: |
+          echo "=================================="
+          echo "FRONTEND CHECKS PASSED"
+          echo "Install: SUCCESS"
+          echo "Dependency audit: SUCCESS"
+          echo "Lint: SUCCESS"
+          echo "Build: SUCCESS"
+          echo "=================================="
+
+      # ==========================================
+      # 4. BACKEND: INSTALL, AUDIT, TEST
+      # ==========================================
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Audit backend dependencies
+        working-directory: backend
+        run: npm audit --audit-level=high
+
+      - name: Run backend tests
+        working-directory: backend
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN: 1h
+          PORT: 5002
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: npm test
+
+      - name: Backend completed successfully
+        run: |
+          echo "=================================="
+          echo "BACKEND CHECKS PASSED"
+          echo "Install: SUCCESS"
+          echo "Dependency audit: SUCCESS"
+          echo "Tests: SUCCESS"
+          echo "=================================="
+
+      # ==========================================
+      # 5. SECURITY: NODE.JS SAST WITH ESLINT
+      # ==========================================
+      # ESLint is already used by your frontend.
+      # This step installs ESLint in the backend
+      # environment and scans backend JavaScript.
+      # This is static analysis, not a full SAST suite.
+
+      - name: Install backend ESLint
+        working-directory: backend
+        run: npm install --no-save eslint
+
+      - name: Run backend static analysis
+        working-directory: backend
+        shell: bash
+        run: |
+          set -e
+          find . -path '*/node_modules' -prune -o \
+            -type f -name '*.js' -print0 |
+            xargs -0 -r npx eslint --no-config-lookup \
+              --no-ignore \
+              --rule 'no-eval:error' \
+              --rule 'no-implied-eval:error' \
+              --rule 'no-new-func:error' \
+              --rule 'no-debugger:error'
+
+      - name: Security scan completed successfully
+        run: |
+          echo "=================================="
+          echo "STATIC ANALYSIS PASSED"
+          echo "No configured ESLint rule violations."
+          echo "=================================="
+
+      # ==========================================
+      # 6. DOCKER: SET UP BUILDX
+      # ==========================================
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ==========================================
+      # 7. CREATE DOCKER IMAGE NAMES
+      # ==========================================
+      - name: Set image names
+        id: image-names
+        shell: bash
+        run: |
+          REPO="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "frontend=${REPO}-frontend" >> "$GITHUB_OUTPUT"
+          echo "backend=${REPO}-backend" >> "$GITHUB_OUTPUT"
+
+      # ==========================================
+      # 8. BUILD FRONTEND DOCKER IMAGE
+      # ==========================================
+      - name: Build frontend Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend/project
+          file: ./frontend/project/Dockerfile
+          push: false
+          tags: ${{ steps.image-names.outputs.frontend }}:${{ github.sha }}
+
+      # ==========================================
+      # 9. BUILD BACKEND DOCKER IMAGE
+      # ==========================================
+      - name: Build backend Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: false
+          tags: ${{ steps.image-names.outputs.backend }}:${{ github.sha }}
+
+      # ==========================================
+      # 10. LOGIN TO GITHUB CONTAINER REGISTRY
+      # ==========================================
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ==========================================
+      # 11. PUBLISH FRONTEND IMAGE
+      # ==========================================
+      - name: Push frontend Docker image
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend/project
+          file: ./frontend/project/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image-names.outputs.frontend }}:${{ github.ref_name }}
+            ${{ steps.image-names.outputs.frontend }}:${{ github.sha }}
+
+      # ==========================================
+      # 12. PUBLISH BACKEND IMAGE
+      # ==========================================
+      - name: Push backend Docker image
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image-names.outputs.backend }}:${{ github.ref_name }}
+            ${{ steps.image-names.outputs.backend }}:${{ github.sha }}
+
+      # ==========================================
+      # 13. DOCKER SUCCESS MESSAGE
+      # ==========================================
+      - name: Docker completed successfully
+        run: |
+          echo "=================================="
+          echo "DOCKER STAGE PASSED"
+          echo "Frontend image: BUILD SUCCESS"
+          echo "Backend image: BUILD SUCCESS"
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            echo "Image publishing: SUCCESS"
+          else
+            echo "Pull request: images built but not published"
+          fi
+          echo "=================================="
+
+      # ==========================================
+      # 14. FINAL FILE LIST AND CI/CD MESSAGE
+      # ==========================================
+      - name: List files and confirm CI/CD completion
+        run: |
+          echo "=================================="
+          echo "REPOSITORY FILES"
+          echo "=================================="
+          ls -la
+          echo "=================================="
+          echo "CI/CD PIPELINE COMPLETED SUCCESSFULLY"
+          echo "Frontend: SUCCESS"
+          echo "Backend: SUCCESS"
+          echo "Static analysis: SUCCESS"
+          echo "Docker: SUCCESS"
+          echo "=================================="

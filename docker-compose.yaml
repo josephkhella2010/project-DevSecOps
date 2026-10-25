@@ -1,0 +1,52 @@
+services:
+  frontend:
+    container_name: project-container-frontend
+    build:
+      context: ./frontend/project
+      dockerfile: Dockerfile
+    image: project-img-frontend
+    ports:
+      - "${FRONTEND_PORT}:${FRONTEND_PORT}"
+    volumes:
+      - ./frontend/project:/app
+      - project-volume-frontend:/app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_API_URL=${VITE_API_URL}
+
+  backend:
+    container_name: project-container-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: project-img-backend
+    ports:
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
+    volumes:
+      - ./backend:/app
+      - project-volume-backend:/app/node_modules
+    command: npx nodemon --legacy-watch --delay 2 server.js
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - PORT=${BACKEND_PORT}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-1h}
+      - MONGODB_URI=${MONGODB_URI}
+
+    env_file:
+      - ./backend/.env
+
+  mongo:
+    container_name: project-container-mongo
+    image: mongo:8
+    restart: unless-stopped
+    volumes:
+      - project-volume-mongo:/data/db
+
+volumes:
+  project-volume-frontend:
+    name: project-volume-frontend
+  project-volume-backend:
+    name: project-volume-backend
+  project-volume-mongo:
+    name: project-volume-mongo
