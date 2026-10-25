@@ -48,11 +48,15 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend/project
         run: npm ci
+        
+      - name: Automatically fix frontend vulnerabilities
+        working-directory: frontend/project
+        run: npm audit fix
 
       - name: Audit frontend dependencies
         working-directory: frontend/project
         run: npm audit --audit-level=high
-        
+
       - name: Fix frontend ESLint issues
         working-directory: frontend/project
         run: npm run lint -- --fix
@@ -83,6 +87,10 @@ jobs:
       - name: Install backend dependencies
         working-directory: backend
         run: npm ci
+
+      - name: Automatically fix backend vulnerabilities
+        working-directory: backend
+        run: npm audit fix
 
       - name: Audit backend dependencies
         working-directory: backend
