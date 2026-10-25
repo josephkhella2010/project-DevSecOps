@@ -52,6 +52,10 @@ jobs:
       - name: Audit frontend dependencies
         working-directory: frontend/project
         run: npm audit --audit-level=high
+        
+      - name: Fix frontend ESLint issues
+        working-directory: frontend/project
+        run: npm run lint -- --fix
 
       - name: Lint frontend
         working-directory: frontend/project

@@ -202,7 +202,7 @@ const userSlice = createSlice({
       }
     },
     setUpdateUserProducts: (state, action: PayloadAction<ProductType[]>) => {
-      if (!state.user) return;
+      if (!state.user) {return;}
 
       state.user.userInfo = {
         ...state.user.userInfo,

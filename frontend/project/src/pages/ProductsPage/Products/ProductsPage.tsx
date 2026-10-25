@@ -15,7 +15,7 @@ const useStyles = createUseStyles({
     minHeight: "100vh",
     background: "var(--paper)",
     color: "var(--ink)",
-    fontFamily: 'Inter, "Segoe UI", sans-serif',
+    fontFamily: "Inter, \"Segoe UI\", sans-serif",
     "& *": {
       boxSizing: "border-box",
     },
