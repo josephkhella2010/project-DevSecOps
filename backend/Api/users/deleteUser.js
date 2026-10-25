@@ -2,7 +2,7 @@ import express from "express";
 import { z } from "zod";
 import User from "../../models/User.js";
 import authenticateToken from "../../jwt/authenticateToken.js";
-
+//
 const router = express.Router();
 
 router.delete("/delete-user/:id", authenticateToken, async (req, res) => {
