@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { createUseStyles } from "react-jss";
-import type { AppDispatch, RootState } from "../../store/store";
+import type { AppDispatch,RootState } from "../../../store/store";
 
 interface LoginFormType {
   login: string;
