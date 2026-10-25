@@ -1,3 +1,4 @@
+
 FROM node:22-alpine3.24
 
 RUN npm install --global npm@11.21.1 \
@@ -8,15 +9,17 @@ RUN npm install --global npm@11.21.1 \
     && rm -rf /usr/local/lib/node_modules/npm/node_modules/undici \
     && mv package /usr/local/lib/node_modules/npm/node_modules/undici \
     && cd / \
-    && rm -rf /tmp/undici-fix 
-    
+    && rm -rf /tmp/undici-fix
+
 WORKDIR /app
 
-COPY package*.json ./
+COPY --chown=node:node package*.json ./
 
-RUN npm install
+RUN npm ci && chown -R node:node /app
 
-COPY . .
+COPY --chown=node:node . .
+
+USER node
 
 EXPOSE 3000
 

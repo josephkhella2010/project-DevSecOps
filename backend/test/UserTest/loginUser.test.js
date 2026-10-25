@@ -186,7 +186,7 @@ describe("POST /api/login", () => {
 });
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import express from "express";
 import request from "supertest";
 import bcrypt from "bcrypt";
@@ -276,13 +276,15 @@ describe("POST /api/login", () => {
     generateToken.mockReturnValue(mockToken);
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("should log in successfully and return user with populated products", async () => {
-    const response = await request(app)
-      .post("/api/login")
-      .send({
-        login: "john@example.com",
-        password: "correct-password",
-      });
+    const response = await request(app).post("/api/login").send({
+      login: "john@example.com",
+      password: "correct-password",
+    });
 
     expect(response.status).toBe(200);
 
@@ -315,9 +317,7 @@ describe("POST /api/login", () => {
   });
 
   it("should return 400 when validation fails", async () => {
-    const response = await request(app)
-      .post("/api/login")
-      .send({});
+    const response = await request(app).post("/api/login").send({});
 
     expect(response.status).toBe(400);
     expect(response.body.error).toBe("Validation failed");
@@ -327,12 +327,10 @@ describe("POST /api/login", () => {
   });
 
   it("should normalize email to lowercase", async () => {
-    const response = await request(app)
-      .post("/api/login")
-      .send({
-        login: "JOHN@EXAMPLE.COM",
-        password: "correct-password",
-      });
+    const response = await request(app).post("/api/login").send({
+      login: "JOHN@EXAMPLE.COM",
+      password: "correct-password",
+    });
 
     expect(response.status).toBe(200);
 
@@ -342,12 +340,10 @@ describe("POST /api/login", () => {
   });
 
   it("should search by username when login is not an email", async () => {
-    const response = await request(app)
-      .post("/api/login")
-      .send({
-        login: "johndoe",
-        password: "correct-password",
-      });
+    const response = await request(app).post("/api/login").send({
+      login: "johndoe",
+      password: "correct-password",
+    });
 
     expect(response.status).toBe(200);
 
@@ -359,12 +355,10 @@ describe("POST /api/login", () => {
   it("should return 401 when the user does not exist", async () => {
     selectPasswordMock.mockResolvedValueOnce(null);
 
-    const response = await request(app)
-      .post("/api/login")
-      .send({
-        login: "unknown@example.com",
-        password: "correct-password",
-      });
+    const response = await request(app).post("/api/login").send({
+      login: "unknown@example.com",
+      password: "correct-password",
+    });
 
     expect(response.status).toBe(401);
 
@@ -380,12 +374,10 @@ describe("POST /api/login", () => {
   it("should return 401 when the password is incorrect", async () => {
     bcrypt.compare.mockResolvedValueOnce(false);
 
-    const response = await request(app)
-      .post("/api/login")
-      .send({
-        login: "john@example.com",
-        password: "wrong-password",
-      });
+    const response = await request(app).post("/api/login").send({
+      login: "john@example.com",
+      password: "wrong-password",
+    });
 
     expect(response.status).toBe(401);
 
@@ -400,12 +392,10 @@ describe("POST /api/login", () => {
   it("should return 404 when the user cannot be fetched after login", async () => {
     selectUserMock.mockResolvedValueOnce(null);
 
-    const response = await request(app)
-      .post("/api/login")
-      .send({
-        login: "john@example.com",
-        password: "correct-password",
-      });
+    const response = await request(app).post("/api/login").send({
+      login: "john@example.com",
+      password: "correct-password",
+    });
 
     expect(response.status).toBe(404);
 
@@ -415,16 +405,12 @@ describe("POST /api/login", () => {
   });
 
   it("should return 500 when the database lookup fails", async () => {
-    selectPasswordMock.mockRejectedValueOnce(
-      new Error("Database error"),
-    );
+    selectPasswordMock.mockRejectedValueOnce(new Error("Database error"));
 
-    const response = await request(app)
-      .post("/api/login")
-      .send({
-        login: "john@example.com",
-        password: "correct-password",
-      });
+    const response = await request(app).post("/api/login").send({
+      login: "john@example.com",
+      password: "correct-password",
+    });
 
     expect(response.status).toBe(500);
 
@@ -434,16 +420,16 @@ describe("POST /api/login", () => {
   });
 
   it("should return 500 when password comparison fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
     bcrypt.compare.mockRejectedValueOnce(
       new Error("Password comparison failed"),
     );
 
-    const response = await request(app)
-      .post("/api/login")
-      .send({
-        login: "john@example.com",
-        password: "correct-password",
-      });
+    const response = await request(app).post("/api/login").send({
+      login: "john@example.com",
+      password: "correct-password",
+    });
 
     expect(response.status).toBe(500);
 
@@ -453,16 +439,16 @@ describe("POST /api/login", () => {
   });
 
   it("should return 500 when fetching populated products fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
     populateMock.mockImplementationOnce(() => {
       throw new Error("Populate failed");
     });
 
-    const response = await request(app)
-      .post("/api/login")
-      .send({
-        login: "john@example.com",
-        password: "correct-password",
-      });
+    const response = await request(app).post("/api/login").send({
+      login: "john@example.com",
+      password: "correct-password",
+    });
 
     expect(response.status).toBe(500);
 
@@ -472,16 +458,16 @@ describe("POST /api/login", () => {
   });
 
   it("should return 500 when token generation fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
     generateToken.mockImplementationOnce(() => {
       throw new Error("Token generation failed");
     });
 
-    const response = await request(app)
-      .post("/api/login")
-      .send({
-        login: "john@example.com",
-        password: "correct-password",
-      });
+    const response = await request(app).post("/api/login").send({
+      login: "john@example.com",
+      password: "correct-password",
+    });
 
     expect(response.status).toBe(500);
 
