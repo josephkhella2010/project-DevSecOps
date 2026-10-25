@@ -1,4 +1,3 @@
-
 name: Project DevSecOps CI/CD
 
 on:
@@ -13,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   ci-cd:
@@ -48,7 +48,7 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend/project
         run: npm ci
-        
+
       - name: Automatically fix frontend vulnerabilities
         working-directory: frontend/project
         run: npm audit fix
